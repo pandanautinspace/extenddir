@@ -4,6 +4,7 @@ import './Newtab.css';
 import './Newtab.scss';
 
 const Newtab = () => {
+  let tabs = chrome.tabs.query({});
   return (
     <div className="App">
       <header className="App-header">
