@@ -1,4 +1,2 @@
- - sort open tabs by window
- - click on links in lists
- - click to make list
- - group tabs
+ - select multiple tabs (cmd/shift-click) and drag them together
+ - subgroups in lists, mirroring tab groups (drag a group into a list and back)
