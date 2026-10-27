@@ -8,6 +8,7 @@ A Chrome extension that replaces the new tab page with a tab manager. It shows y
 - Drag a tab onto **+ New List**, or click it, to start a new list.
 - Drag a saved tab back to a window to reopen it, or click it to open it here. Either way it leaves the list.
 - Click a list's name to rename it.
+- Cmd-click tabs to select several, or Shift-click to select a range. Dragging any selected tab moves them all. Esc clears the selection.
 
 Lists are kept in `chrome.storage.local`.
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import './Newtab.css';
 import './Newtab.scss';
 import { DragDropContext, Draggable, Droppable } from '@hello-pangea/dnd';
-import { Box, Button, Card, CardBody, CardHeader, ChakraProvider, CloseButton, Editable, EditableInput, EditablePreview, Flex, Heading, Image, Spacer, Text, VStack } from '@chakra-ui/react';
+import { Badge, Box, Button, Card, CardBody, CardHeader, ChakraProvider, CloseButton, Editable, EditableInput, EditablePreview, Flex, Heading, Image, Spacer, Text, VStack } from '@chakra-ui/react';
 
 // Storage layout: "__tab_lists" holds the ordered list ids, and each list id
 // holds { name, tabs: [{ title, url, favIconUrl }] }.
@@ -54,28 +54,33 @@ const nextGroupColor = (color) => {
   return names[(names.indexOf(color) + 1) % names.length];
 }
 
-// Put tab at position in the window's tab order, as part of groupId (-1 for none),
-// so the page shows the drop right away instead of waiting for Chrome.
-const placeTab = (tabs, tab, windowId, position, groupId) => {
-  const rest = tabs.filter(t => t.id != tab.id);
-  const win = rest.filter(t => t.windowId == windowId);
-  const at = position < win.length ? rest.indexOf(win[position])
-    : win.length ? rest.indexOf(win.at(-1)) + 1 : rest.length;
-  rest.splice(at, 0, { ...tab, windowId, groupId });
+// Put moved tabs in front of the anchor tab (or at the end of the window when there's none),
+// as part of groupId (-1 for none), so the page shows the drop right away instead of waiting for Chrome.
+const placeTabs = (tabs, moved, anchorId, windowId, groupId) => {
+  const rest = tabs.filter(t => !moved.includes(t));
+  let at = rest.findIndex(t => t.id == anchorId);
+  if (at == -1) at = rest.findLastIndex(t => t.windowId == windowId) + 1 || rest.length;
+  rest.splice(at, 0, ...moved.map(t => ({ ...t, windowId, groupId })));
   return rest;
 }
 
+// Move a tab in front of the anchor tab, or to the end of the window when there's none.
 // Chrome adds a tab to a group when it's moved into the group's middle and takes it out
 // when it's moved outside, so group first, move, then undo any grouping the move caused.
-const moveOpenTab = async (tabId, windowId, index, groupId) => {
+const moveBefore = async (tabId, anchorId, windowId, groupId) => {
   if (groupId != -1) await chrome.tabs.group({ groupId, tabIds: tabId });
+  let index = -1;
+  if (anchorId != null) {
+    const [tab, anchor] = await Promise.all([chrome.tabs.get(tabId), chrome.tabs.get(anchorId)]);
+    index = tab.windowId == anchor.windowId && tab.index < anchor.index ? anchor.index - 1 : anchor.index;
+  }
   await chrome.tabs.move(tabId, { windowId, index });
   if (groupId == -1 && (await chrome.tabs.get(tabId)).groupId != -1) await chrome.tabs.ungroup(tabId);
 }
 
-const newGroup = (tabId, windowId) => chrome.tabs.group({ tabIds: tabId, createProperties: { windowId } });
-
-const TabCard = ({ tab, draggableProvider, children, ...props }) => (
+// selected highlights the card, faded dims selected cards riding along with another
+// card's drag, and count badges the dragged card with how many tabs are moving
+const TabCard = ({ tab, draggableProvider, selected, faded, count, children, ...props }) => (
   <Card
     ref={draggableProvider.innerRef}
     {...draggableProvider.draggableProps}
@@ -85,8 +90,16 @@ const TabCard = ({ tab, draggableProvider, children, ...props }) => (
     py={1}
     gap={2}
     align="center"
+    position="relative"
+    userSelect="none"
+    bgColor={selected ? "blue.50" : undefined}
+    boxShadow={selected ? "inset 0 0 0 2px var(--chakra-colors-blue-400)" : undefined}
+    opacity={faded ? 0.4 : 1}
     {...props}
   >
+    {count > 1 && (
+      <Badge position="absolute" top="-8px" right="-8px" colorScheme="blue" variant="solid" borderRadius="full">{count}</Badge>
+    )}
     <Image src={faviconUrl(tab.url || tab.pendingUrl)} boxSize="16px" flexShrink={0} />
     <Box flex={1} minW={0}>
       <Text fontSize="sm" fontWeight="semibold" {...truncate}>{tab.title}</Text>
@@ -103,6 +116,9 @@ const Newtab = () => {
   });
   let [tabListIds, updateTabListIds] = useState(["readlater"]);
   let [groups, updateGroups] = useState({});
+  let [selected, updateSelected] = useState([]);
+  let [lastClicked, updateLastClicked] = useState(null);
+  let [dragging, updateDragging] = useState(null);
   const refresh = () => {
     chrome.tabs.query({}).then(updateTabs);
     chrome.tabGroups.query({}).then(gs => updateGroups(Object.fromEntries(gs.map(g => [g.id, g]))));
@@ -138,6 +154,7 @@ const Newtab = () => {
     chrome.tabGroups.onUpdated.addListener(refresh);
     chrome.tabGroups.onMoved.addListener(refresh);
     chrome.tabGroups.onRemoved.addListener(refresh);
+    document.addEventListener("keydown", (e) => e.key == "Escape" && updateSelected([]));
   }, []);
 
   const setLists = (lists, ids) => {
@@ -167,45 +184,92 @@ const Newtab = () => {
   const windowIds = [...new Set(tabs.map(tab => tab.windowId))]
     .sort((a, b) => (b == currentWindow) - (a == currentWindow));
 
-  const onDragEnd = ({ source, destination }) => {
+  // Every tab card's draggable id in display order: open tabs are "<tabId>",
+  // saved tabs are "<listId>::<index>".
+  const allIds = [
+    ...windowIds.flatMap(windowId => windowTabs(windowId).map(tab => `${tab.id}`)),
+    ...tabListIds.flatMap(listId => tabLists[listId].tabs.map((_, index) => `${listId}::${index}`)),
+  ];
+
+  const itemFor = (id) => {
+    if (!id.includes("::")) return { tab: tabs.find(t => `${t.id}` == id) };
+    const [listId, index] = id.split("::");
+    return { listId, tab: tabLists[listId].tabs[Number(index)] };
+  }
+
+  // cmd/ctrl-click toggles a tab in the selection and shift-click selects a range, like
+  // Chrome's tab strip. Returns true when the click was a selection click.
+  const selectClick = (e, id) => {
+    if (e.metaKey || e.ctrlKey) {
+      updateSelected(selected.includes(id) ? selected.filter(s => s != id) : [...selected, id]);
+      updateLastClicked(id);
+      return true;
+    }
+    if (e.shiftKey && allIds.includes(lastClicked)) {
+      const [a, b] = [allIds.indexOf(lastClicked), allIds.indexOf(id)].sort((x, y) => x - y);
+      updateSelected(allIds.slice(a, b + 1));
+      return true;
+    }
+    updateSelected([]);
+    updateLastClicked(id);
+    return false;
+  }
+
+  const cardState = (id, snapshot) => ({
+    selected: selected.includes(id),
+    faded: dragging != id && selected.includes(dragging) && selected.includes(id),
+    count: snapshot.isDragging && selected.includes(id) ? selected.length : 0,
+  });
+
+  const onDragStart = ({ draggableId }) => {
+    updateDragging(draggableId);
+    if (!selected.includes(draggableId)) updateSelected([]);
+  }
+
+  const onDragEnd = ({ draggableId, source, destination }) => {
+    updateDragging(null);
     if (!destination) return;
+    // dragging a selected tab moves the whole selection, in display order
+    const movingIds = selected.includes(draggableId) ? allIds.filter(id => selected.includes(id)) : [draggableId];
+    const moving = movingIds.map(itemFor);
+    const openTabs = moving.filter(m => !m.listId).map(m => m.tab);
+    updateSelected([]);
+
     // open tab zones are "OpenTabs::<windowId>::<start>::<groupId>"
-    const [fromKind, from, fromStart] = source.droppableId.split("::");
     const [toKind, to, toStart, toGroup] = destination.droppableId.split("::");
-    const lists = structuredClone(tabLists);
+
+    // everything goes in front of the first tab at the drop point that isn't moving
+    const following = toKind == "OpenTabs" ? windowTabs(to).slice(Number(toStart)).map(t => `${t.id}`)
+      : toKind == "TabList" ? tabLists[to].tabs.map((_, index) => `${to}::${index}`) : [];
+    const anchor = following.filter(id => id != draggableId).slice(destination.index)
+      .find(id => !movingIds.includes(id));
+
+    // saved tabs leave their lists wherever they go
+    const lists = Object.fromEntries(Object.entries(tabLists).map(([listId, list]) =>
+      [listId, { ...list, tabs: list.tabs.filter((_, index) => !movingIds.includes(`${listId}::${index}`)) }]));
     let ids = tabListIds;
 
-    // take the dragged tab out of where it came from
-    let saved;
-    if (fromKind == "OpenTabs") {
-      const position = Number(fromStart) + source.index;
-      const tab = windowTabs(from)[position];
+    if (toKind == "OpenTabs" || toKind == "NewGroup") {
+      const windowId = Number(to);
       if (toKind == "OpenTabs") {
-        let index = Number(toStart) + destination.index;
-        if (from == to && position < Number(toStart)) index -= 1;
-        updateTabs(placeTab(tabs, tab, Number(to), index, Number(toGroup)));
-        moveOpenTab(tab.id, Number(to), index, Number(toGroup));
-        return;
+        updateTabs(placeTabs(tabs, openTabs, Number(anchor), windowId, Number(toGroup)));
       }
-      if (toKind == "NewGroup") {
-        newGroup(tab.id, Number(to));
-        return;
-      }
-      chrome.tabs.remove(tab.id);
-      updateTabs(tabs.filter(t => t.id != tab.id));
-      saved = toSaved(tab);
-    } else {
-      [saved] = lists[from].tabs.splice(source.index, 1);
-    }
-
-    // and put it where it was dropped
-    if (toKind == "OpenTabs") {
-      const index = Number(toStart) + destination.index;
-      chrome.tabs.create({ active: false, url: saved.url, windowId: Number(to), index })
-        .then(tab => moveOpenTab(tab.id, Number(to), index, Number(toGroup)));
-    } else if (toKind == "NewGroup") {
-      chrome.tabs.create({ active: false, url: saved.url, windowId: Number(to) })
-        .then(tab => newGroup(tab.id, Number(to)));
+      (async () => {
+        const tabIds = [];
+        for (const m of moving) {
+          tabIds.push(m.listId ? (await chrome.tabs.create({ active: false, url: m.tab.url, windowId })).id : m.tab.id);
+        }
+        if (toKind == "NewGroup") {
+          await chrome.tabs.group({ tabIds, createProperties: { windowId } });
+          return;
+        }
+        // last to first, each in front of the one placed before it
+        let before = anchor && Number(anchor);
+        for (const tabId of tabIds.reverse()) {
+          await moveBefore(tabId, before, windowId, Number(toGroup));
+          before = tabId;
+        }
+      })();
     } else {
       let listId = to;
       if (toKind == "NewList") {
@@ -213,7 +277,12 @@ const Newtab = () => {
         lists[listId] = { "name": "New List!", "tabs": [] };
         ids = [...ids, listId];
       }
-      lists[listId].tabs.splice(destination.index, 0, saved);
+      const at = anchor ? lists[listId].tabs.indexOf(itemFor(anchor).tab) : lists[listId].tabs.length;
+      lists[listId].tabs.splice(at, 0, ...moving.map(m => m.listId ? m.tab : toSaved(m.tab)));
+      if (openTabs.length) {
+        chrome.tabs.remove(openTabs.map(t => t.id));
+        updateTabs(tabs.filter(t => !openTabs.includes(t)));
+      }
     }
     setLists(lists, ids);
   }
@@ -243,7 +312,7 @@ const Newtab = () => {
   return (
     <ChakraProvider>
       <Box w="100vw" h="100vh" bgColor="gray.100" p={3}>
-        <DragDropContext onDragEnd={onDragEnd}>
+        <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <Flex height="100%" gap={3}>
             <Flex direction="column" w="280px" flexShrink={0} minH={0}>
               <Heading size="md" mb={2}>Open Tabs</Heading>
@@ -269,8 +338,13 @@ const Newtab = () => {
                                   key={tab.id}
                                   draggableId={`${tab.id}`}
                                 >
-                                  {(draggableProvider) => (
-                                    <TabCard tab={tab} draggableProvider={draggableProvider}>
+                                  {(draggableProvider, snapshot) => (
+                                    <TabCard
+                                      tab={tab}
+                                      draggableProvider={draggableProvider}
+                                      {...cardState(`${tab.id}`, snapshot)}
+                                      onClick={(e) => selectClick(e, `${tab.id}`)}
+                                    >
                                       <CloseButton size="sm" onClick={() => {
                                         chrome.tabs.remove(tab.id)
                                         chrome.tabs.query({}).then(updateTabs);
@@ -378,12 +452,13 @@ const Newtab = () => {
                                   key={`${listId}::${index}`}
                                   draggableId={`${listId}::${index}`}
                                 >
-                                  {(draggableProvider) => (
+                                  {(draggableProvider, snapshot) => (
                                     <TabCard
                                       tab={tab}
                                       draggableProvider={draggableProvider}
+                                      {...cardState(`${listId}::${index}`, snapshot)}
                                       cursor="pointer"
-                                      onClick={() => openSaved(listId, index)}
+                                      onClick={(e) => selectClick(e, `${listId}::${index}`) || openSaved(listId, index)}
                                     />
                                   )}
                                 </Draggable>
