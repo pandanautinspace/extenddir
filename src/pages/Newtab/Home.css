@@ -1,0 +1,599 @@
+/* The home view (Home.jsx). Its colors, shadows, radii and fonts are Chakra's theme
+   tokens (the CSS variables ChakraProvider puts on the page), so it looks like the lists
+   page under it: white page, gray.100 lists, white cards, blue for what's chosen. */
+
+.home {
+  --bg: var(--chakra-colors-white);
+  --surface: var(--chakra-colors-white);
+  --ink: var(--chakra-colors-gray-800);
+  --muted: var(--chakra-colors-gray-500);
+  --label: var(--chakra-colors-gray-600);
+  --faint: var(--chakra-colors-gray-400);
+  --line: var(--chakra-colors-gray-200);
+  --fill: var(--chakra-colors-gray-100);
+  --hover: var(--chakra-colors-gray-100);
+  --pressed: var(--chakra-colors-gray-200);
+  --accent: var(--chakra-colors-blue-500);
+  --chosen: var(--chakra-colors-blue-50);
+  --chosen-edge: var(--chakra-colors-blue-400);
+  --drop: var(--chakra-colors-green-400);
+  --drop-fill: var(--chakra-colors-green-50);
+  --mark: var(--chakra-colors-yellow-100);
+  --radius: var(--chakra-radii-md);
+  --radius-lg: var(--chakra-radii-lg);
+  --shadow-sm: var(--chakra-shadows-base);
+  --shadow: var(--chakra-shadows-md);
+  --shadow-lg: var(--chakra-shadows-lg);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--chakra-fonts-body);
+  font-size: var(--chakra-fontSizes-sm);
+}
+
+.home button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+
+.home-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.home-stage {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.home-top {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+}
+
+/* like a Chakra xs ghost / outline button */
+.home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius);
+  font-size: var(--chakra-fontSizes-xs) !important;
+  font-weight: 600;
+  color: var(--ink) !important;
+  background: transparent;
+}
+.home-link:hover { background: var(--hover); }
+.home-link.is-small { border: 1px solid var(--line); }
+.home-link .home-icon { width: 14px; height: 14px; }
+
+/* --- the search box --- */
+
+.home-box {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+}
+
+/* the lists page's search input, bigger: gray.100, no border, rounded all the way */
+.home-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 56px;
+  padding: 0 8px 0 20px;
+  background: var(--fill);
+  border: 2px solid transparent;
+  border-radius: 28px;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.home-pill:focus-within {
+  background: var(--surface);
+  border-color: var(--chosen-edge);
+  box-shadow: var(--shadow);
+}
+.home-box.is-open .home-pill {
+  background: var(--surface);
+  border-color: var(--line);
+  border-bottom-color: transparent;
+  border-radius: 28px 28px 0 0;
+  box-shadow: none;
+}
+
+.home-pill-icon { color: var(--muted); display: flex; }
+
+.home-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--chakra-fontSizes-lg);
+  color: var(--ink);
+}
+.home-input::placeholder { color: var(--muted); }
+
+.home-scopechip,
+.home-filterchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  max-width: 40%;
+  height: 28px;
+  padding: 0 8px 0 10px;
+  border-radius: var(--chakra-radii-full);
+  font-size: var(--chakra-fontSizes-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-scopechip { background: var(--chosen); color: var(--chakra-colors-blue-700) !important; }
+.home-filterchip { background: var(--pressed); color: var(--label) !important; }
+.home-scopechip span,
+.home-filterchip span { opacity: 0.6; font-weight: 400; }
+
+.home-iconbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--chakra-radii-full);
+  color: var(--muted) !important;
+  background: transparent;
+}
+.home-iconbtn:hover { background: var(--hover); color: var(--ink) !important; }
+
+.home-tip {
+  margin-top: 16px;
+  text-align: center;
+  font-size: var(--chakra-fontSizes-xs);
+  color: var(--muted);
+}
+
+/* --- the results --- */
+
+.home-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: home-drop 0.16s ease-out;
+}
+
+@keyframes home-drop {
+  from { opacity: 0; transform: translateY(-6px); }
+}
+
+/* like the lists page's attached outline button groups */
+.home-filters {
+  display: flex;
+  padding: 2px 14px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.home-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  font-size: var(--chakra-fontSizes-xs);
+  font-weight: 600;
+  background: transparent;
+}
+.home-filter + .home-filter { margin-left: -1px; }
+.home-filter:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.home-filter:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+.home-filter span { font-weight: 400; color: var(--muted); }
+.home-filter:hover { background: var(--hover); }
+.home-filter.is-on { background: var(--pressed); }
+
+.home-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 8px 10px;
+}
+
+.home-section + .home-section { margin-top: 6px; }
+
+/* the lists page's section labels */
+.home-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 4px;
+  font-size: var(--chakra-fontSizes-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--label);
+}
+.home-section-title button {
+  font-weight: 600;
+  text-transform: none;
+  color: var(--accent) !important;
+  background: none;
+}
+
+.home-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  background: var(--surface);
+}
+.home-row.is-active,
+.home-peek-items .home-row:hover { background: var(--hover); }
+
+.home-row-text { flex: 1; min-width: 0; }
+
+.home-row-title,
+.home-row-sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-row-title { font-size: var(--chakra-fontSizes-sm); font-weight: 600; }
+.home-row-sub { font-size: var(--chakra-fontSizes-xs); color: var(--muted); }
+.home-row mark {
+  background: var(--mark);
+  color: inherit;
+  border-radius: 2px;
+}
+
+.home-row-hint {
+  flex-shrink: 0;
+  font-size: var(--chakra-fontSizes-xs);
+  color: var(--muted);
+  opacity: 0;
+}
+.home-row.is-active .home-row-hint { opacity: 1; }
+
+.home-row-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--muted) !important;
+  background: transparent;
+  opacity: 0;
+}
+.home-row:hover .home-row-close { opacity: 1; }
+.home-row-close:hover { background: var(--pressed); color: var(--ink) !important; }
+
+.home-favicon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.home-favicon.is-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.home-favicon.is-glyph .home-icon { width: 16px; height: 16px; }
+
+.home-group {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 6px;
+  border-radius: var(--chakra-radii-sm);
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--group);
+}
+
+/* lists in the results, gray like the lists page's list cards */
+
+.home-listblock + .home-listblock { margin-top: 4px; }
+
+.home-listrow { background: var(--fill); }
+.home-listrow.is-active { background: var(--pressed); }
+.home-listrow .home-row-title { font-weight: 700; }
+.home-listrow.is-source { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+
+.home-listdot {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.home-listrow.is-source .home-listdot,
+.home-scopehead.is-source .home-listdot,
+.home-peek.is-source .home-listdot {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--faint);
+}
+
+.home-listitems {
+  margin-left: 16px;
+  padding-left: 8px;
+  border-left: 3px solid var(--line);
+}
+.home-listitems.is-scope { margin-left: 0; padding-left: 0; border-left: none; }
+
+.home-scopehead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 6px 4px;
+  margin-bottom: 4px;
+  background: var(--fill);
+}
+.home-scopehead.is-source { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.home-scopename {
+  font-size: var(--chakra-fontSizes-md);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* like a Chakra xs outline button */
+.home-chip {
+  flex-shrink: 0;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius);
+  font-size: var(--chakra-fontSizes-xs);
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.home-chip:hover { background: var(--hover); }
+
+/* where a dragged tab will go, like the lists page's drop zones */
+.is-drop {
+  outline: 1px dashed var(--drop);
+  outline-offset: 2px;
+  background-color: var(--drop-fill) !important;
+}
+
+.home-empty {
+  padding: 18px 12px;
+  text-align: center;
+  font-size: var(--chakra-fontSizes-sm);
+  color: var(--muted);
+}
+
+
+/* --- list bubbles around the box --- */
+
+@keyframes home-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -5px; }
+}
+
+/* gray.100 like a list card; a source is white and outlined like a source card */
+.home-listbubble {
+  position: absolute;
+  z-index: 10;
+  background: var(--fill);
+  border: 1px solid transparent;
+  animation: home-float 7s ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+  transition: opacity 0.2s, box-shadow 0.15s, scale 0.15s, background 0.15s;
+}
+.home-listbubble:hover { background: var(--pressed); box-shadow: var(--shadow-sm); scale: 1.06; }
+.home-listbubble.is-source { background: var(--surface); border-color: var(--line); }
+.home-listbubble.is-source:hover { background: var(--hover); }
+.home-listbubble.is-quiet { opacity: 0.45; }
+.home-listbubble.is-drop { scale: 1.12; outline-offset: 4px; }
+.home-listbubble.is-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px dashed var(--chakra-colors-gray-300);
+  background: var(--surface);
+  color: var(--muted) !important;
+  font-size: var(--chakra-fontSizes-xs);
+  font-weight: 600;
+}
+
+.home-listbubble-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  border-radius: 50%;
+  background: transparent;
+  text-align: center;
+}
+.home-listbubble-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--chakra-fontSizes-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+  word-break: break-word;
+}
+.home-listbubble-count {
+  font-size: var(--chakra-fontSizes-xs);
+  color: var(--muted);
+}
+
+/* a bubble rested on opens as this card, shaped like a list card */
+.home-peek {
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--fill);
+  box-shadow: var(--shadow-lg);
+}
+.home-peek.is-source { background: var(--surface); border: 1px solid var(--line); }
+.home-peek-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.home-peek-items {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 12px 12px;
+}
+/* the items are tab cards, as in a list */
+.home-peek-items .home-row {
+  min-height: 0;
+  /* rows keep their height and the card scrolls, rather than squeezing them all in */
+  flex-shrink: 0;
+  padding: 4px 8px;
+  box-shadow: var(--shadow-sm);
+}
+.home-peek-items .home-empty { color: var(--muted); }
+
+/* --- tab bubbles along the bottom, white cards like the open tabs' --- */
+
+.home-tabfield {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  column-gap: 10px;
+  overflow: hidden;
+  transition: opacity 0.2s;
+}
+.home-tabfield.is-quiet { opacity: 0.35; }
+
+.home-tabbubble {
+  position: relative;
+  max-width: 220px;
+  height: 36px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  animation: home-float 8s ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+  transition: box-shadow 0.15s, scale 0.15s;
+}
+.home-tabbubble:hover { box-shadow: var(--shadow); scale: 1.04; z-index: 2; }
+.home-tabbubble.is-grouped { box-shadow: inset 0 0 0 2px var(--group), var(--shadow-sm); }
+.home-tabbubble.is-elsewhere { opacity: 0.75; }
+.home-tabbubble.is-more {
+  padding: 0 14px;
+  border-radius: var(--chakra-radii-full);
+  border: 1px dashed var(--chakra-colors-gray-300);
+  box-shadow: none;
+  font-size: var(--chakra-fontSizes-xs);
+  font-weight: 600;
+  color: var(--muted) !important;
+  animation: none;
+}
+
+.home-tabbubble-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 10px 0 12px;
+  cursor: pointer;
+}
+.home-tabbubble-title {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--chakra-fontSizes-sm);
+  font-weight: 600;
+}
+.home-tabbubble-close {
+  width: 0;
+  height: 20px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--muted) !important;
+  background: transparent;
+  transition: width 0.12s;
+}
+.home-tabbubble:hover .home-tabbubble-close { width: 20px; }
+.home-tabbubble-close:hover { background: var(--pressed); color: var(--ink) !important; }
+
+/* --- the rest --- */
+
+.home-down {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--chakra-radii-full);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink) !important;
+}
+.home-down:hover { background: var(--hover); }
+
+/* the lists page's toasts */
+.home-notice {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  background: var(--chakra-colors-gray-700);
+  color: #fff;
+  font-size: var(--chakra-fontSizes-sm);
+  box-shadow: var(--shadow-lg);
+  animation: home-drop 0.2s ease-out;
+  z-index: 40;
+}
+
+.home-classic {
+  height: 100vh;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-listbubble,
+  .home-tabbubble { animation: none; }
+}

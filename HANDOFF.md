@@ -12,6 +12,7 @@ The README covers how everything works for a user. This file covers what you nee
 
 | Area | Files |
 |---|---|
+| Home view (search box, bubbles; the default) | `src/pages/Newtab/Home.jsx`, `Home.css`, picked in `index.jsx` |
 | New tab page (lists, sources, drag and drop, layouts) | `src/pages/Newtab/Newtab.jsx`, `Items.jsx` |
 | Picker (turns a click into selectors) | `src/pages/Picker/index.js`, `src/sources/selectors.js` |
 | Reading items from a page | `src/sources/extract.js`, `download.js`, `data.js`, `remap.js` |
@@ -26,6 +27,8 @@ The README covers how everything works for a user. This file covers what you nee
 - **The `debugger` permission:** the tab refresh method screencasts its background tab through `chrome.debugger`, so Chrome draws it and infinite-scroll feeds keep loading. Chrome shows a "debugging this browser" bar while that runs; that's expected.
 - **Generated class names:** sites like Instagram and Pinterest change their class names with every build. `isHashed` in `selectors.js` drops them, and the picker falls back to `role`, `data-pagelet`, link kinds, or the path down from a stable ancestor. A source that stops finding items after a site update usually needs a new pick.
 - **Picking:** the user prefers to do picks themselves unless the picker logic is changing. What they care about most is how many items a refresh gets.
+
+- **Testing the new tab page headless:** Chrome 137+ ignores `--load-extension`. Launch with `--remote-debugging-port=9333 --enable-unsafe-extension-debugging` and call `Extensions.loadUnpacked` (forward-slash path) over the browser websocket.
 
 ## Open items
 

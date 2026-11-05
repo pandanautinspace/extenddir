@@ -309,7 +309,9 @@ const placeholderIn = (droppableProvider, snapshot) => snapshot.draggingFromThis
   ? droppableProvider.placeholder
   : <Box w={0} h={0} overflow="hidden">{droppableProvider.placeholder}</Box>;
 
-const Newtab = () => {
+// embedded is the lists page under the home view (Home.jsx), stacked by default and with its
+// own layout setting; headerExtra goes in its top bar.
+const Newtab = ({ embedded = false, headerExtra = null }) => {
   let [tabs, updateTabs] = useState([]);
   let [tabLists, updateTabLists] = useState({
     "readlater": { "name": "Read Later", "tabs": [], "groups": {} }
@@ -323,7 +325,8 @@ const Newtab = () => {
   let [collapsedWindows, updateCollapsedWindows] = useState([]);
   let [sourceIds, updateSourceIds] = useState([]);
   let [layout, updateLayout] = useState(() => loadSetting("layout", "side"));
-  let [listsLayout, updateListsLayout] = useState(() => loadSetting("listsLayout", "columns"));
+  const listsLayoutKey = embedded ? "homeListsLayout" : "listsLayout";
+  let [listsLayout, updateListsLayout] = useState(() => loadSetting(listsLayoutKey, embedded ? "stack" : "columns"));
   // the list or source being dragged by its header, and whether the pointer is over the sources
   let [draggingList, updateDraggingList] = useState(null);
   let [overSources, updateOverSources] = useState(false);
@@ -361,7 +364,7 @@ const Newtab = () => {
 
   const changeListsLayout = (layout) => {
     updateListsLayout(layout);
-    saveSetting("listsLayout", layout);
+    saveSetting(listsLayoutKey, layout);
   }
 
   const refresh = () => {
@@ -1451,7 +1454,7 @@ const Newtab = () => {
 
   return (
     <ChakraProvider>
-      <Flex direction="column" gap={3} w="100vw" h="100vh" p={3} bgColor="white">
+      <Flex direction="column" gap={3} w="100%" h="100vh" p={3} bgColor="white">
         <Flex align="center" gap={3}>
           <Input
             size="sm"
@@ -1525,6 +1528,7 @@ const Newtab = () => {
             </Text>
           )}
           <Spacer />
+          {headerExtra}
           <Menu isLazy>
             <MenuButton
               as={Button}

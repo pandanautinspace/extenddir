@@ -19,6 +19,20 @@ A Chrome extension that replaces the new tab page with a tab manager. It's for o
 
 Lists and sources are kept in `chrome.storage.local`.
 
+## Home
+
+The new tab page opens on **Home**: one search box in the middle, your lists floating around it as bubbles, and your open tabs scattered along the bottom. Scroll down (or click ↓) for everything above, with the lists stacked. **Classic view** at the top right makes the page above the new tab page instead, and its **Home view** switches back.
+
+- Type to search open tabs, lists by name, and what's in lists and sources. Tabs and lists that match fly into the results; a list shows the items in it that match.
+- **Tab** and **Shift-Tab** switch between All, Tabs, Lists, Sources and Web (or click them). ↑ ↓ move, **Enter** opens (the chosen row shows ↵ and what it does), **Esc** steps back.
+- Choosing a tab switches to it and closes the new tab page. Choosing a saved link opens it here and takes it out of its list until the tab's closed, as on the lists page.
+- An address goes straight there; anything else can be searched on the web with Chrome's default search engine. ⌘/Ctrl+Enter opens it in a new tab.
+- Rest the pointer on a list's bubble and it opens as a card with the list in it, with **Search** and **Open all**. Click a bubble to search inside that list; Backspace on an empty search leaves it.
+- Drag a tab bubble onto a list's bubble (or its card, or its row in the results) to save it there and close it.
+- Typing anywhere on the top of the page starts a search, and **/** jumps back to it from anywhere.
+
+Chrome keeps the address bar focused on a new tab page, so click the box (or start typing after clicking the page) the first time.
+
 ## Syncing between computers
 
 **Sync off** at the top right switches on **Sync lists through Chrome**, which keeps your lists in your Chrome profile (`chrome.storage.sync`), so they show up on your other computers signed in to Chrome, with extension sync on and this switched on there too. It's set on each computer.
