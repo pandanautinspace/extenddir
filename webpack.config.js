@@ -42,12 +42,14 @@ var options = {
     options: path.join(__dirname, 'src', 'pages', 'Options', 'index.jsx'),
     popup: path.join(__dirname, 'src', 'pages', 'Popup', 'index.jsx'),
     background: path.join(__dirname, 'src', 'pages', 'Background', 'index.js'),
-    contentScript: path.join(__dirname, 'src', 'pages', 'Content', 'index.js'),
+    picker: path.join(__dirname, 'src', 'pages', 'Picker', 'index.js'),
+    extractor: path.join(__dirname, 'src', 'pages', 'Extractor', 'index.js'),
+    offscreen: path.join(__dirname, 'src', 'pages', 'Offscreen', 'index.js'),
     devtools: path.join(__dirname, 'src', 'pages', 'Devtools', 'index.js'),
     panel: path.join(__dirname, 'src', 'pages', 'Panel', 'index.jsx'),
   },
   chromeExtensionBoilerplate: {
-    notHotReload: ['background', 'contentScript', 'devtools'],
+    notHotReload: ['background', 'picker', 'extractor', 'offscreen', 'devtools'],
   },
   output: {
     filename: '[name].bundle.js',
@@ -157,11 +159,12 @@ var options = {
         },
       ],
     }),
+    // the code that runs the sentence model (see Offscreen/embed.js), which loads it from here
     new CopyWebpackPlugin({
       patterns: [
         {
-          from: 'src/pages/Content/content.styles.css',
-          to: path.join(__dirname, 'build'),
+          from: 'node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.{mjs,wasm}',
+          to: path.join(__dirname, 'build', 'ort', '[name][ext]'),
           force: true,
         },
       ],
@@ -200,6 +203,12 @@ var options = {
       template: path.join(__dirname, 'src', 'pages', 'Popup', 'index.html'),
       filename: 'popup.html',
       chunks: ['popup'],
+      cache: false,
+    }),
+    new HtmlWebpackPlugin({
+      template: path.join(__dirname, 'src', 'pages', 'Offscreen', 'index.html'),
+      filename: 'offscreen.html',
+      chunks: ['offscreen'],
       cache: false,
     }),
     new HtmlWebpackPlugin({
