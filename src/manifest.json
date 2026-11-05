@@ -3,6 +3,7 @@
   "name": "extenddir",
   "description": "A chrome",
   "version": "0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmmR/uePkKTwGZDMwHcnR5XQCUcavob5RV6CdGPi91vKeNh3LlXwKPxLpZLJ8Iz73FFlaNAwu54TlnygyB5vKIzofj6igAU03Ci1JBWJ9QxIic+nUUssv4E5M90POGulP8vY3kvyr/mPJzZN1i1RkQQCKUIBxyPNzWmg3MGFwrFB3vKJPG+FQc++hUoP7g1Y2E0mev1XtTW8nEivOnnmWtgeieO4fk9YlIcsgk8y2FnQtfudk4T+gC05Y/hoLOcN1Ae359V4hgVvzzBBDRjXmuWW7UkEGZq9xUw46ZI+BVtCArt0WSgv+mAx75PEq3ChgapUMxQy2VjKz4CYnbJaGqwIDAQAB",
   "options_page": "options.html",
   "action": {
     "default_popup": "popup.html",

@@ -19,6 +19,17 @@ A Chrome extension that replaces the new tab page with a tab manager. It's for o
 
 Lists and sources are kept in `chrome.storage.local`.
 
+## Syncing between computers
+
+**Sync off** at the top right switches on **Sync lists through Chrome**, which keeps your lists in your Chrome profile (`chrome.storage.sync`), so they show up on your other computers signed in to Chrome, with extension sync on and this switched on there too. It's set on each computer.
+
+- Lists sync whole: names, items, groups and widths. Sources sync what they read and how, but not the items they found, since each computer refreshes its own; nor whether they're shown.
+- A change on one computer goes to the others a few seconds later. If the same list changed on two computers before they synced, it ends up with the items from both, so nothing's lost, though something removed on one can come back.
+- Chrome keeps 100 KB for an extension's synced data, and lists are kept compressed, so that's a few thousand saved tabs. The menu shows how much is used, and says so if they don't fit.
+- Chrome ties synced data to the extension's ID. The `key` in `src/manifest.json` fixes it (`djbehkgedndihcnohchaklkolmjbigka`) wherever the extension is loaded from, so every computer shares the same synced data. The private half of the key is `key.pem`, which isn't checked in; it's only needed to pack the extension.
+
+The syncing is in `src/pages/Background/sync.js`.
+
 ## Sources
 
 A source is a page or feed whose items you can refresh. Sources sit next to your open tabs, which are always shown. The **Sources** menu at the top shows or hides each one, or all of them, and a source's ✕ hides it. When more are shown than fit, they scroll sideways, so the lists keep at least half the page. **Refresh visible** refreshes the sources that are shown, and **Refresh all** every source, asking once for any sites the extension can't read yet.

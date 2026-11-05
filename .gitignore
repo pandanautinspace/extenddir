@@ -22,3 +22,7 @@
 
 # secrets
 secrets.*.js
+
+# the private half of the extension's key (the public half in src/manifest.json fixes its
+# ID); only needed to pack the extension
+/key.pem

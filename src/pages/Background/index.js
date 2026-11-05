@@ -1,5 +1,6 @@
 import { forget, remember } from './opened';
 import { embed, onFrameMessage, queueRefresh, queueTry } from './refresh';
+import { enableSync } from './sync';
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type == "refresh") {
@@ -16,6 +17,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.type == "forget-opened") {
     forget(message.tabIds).then(sendResponse);
+    return true;
+  }
+  if (message.type == "sync") {
+    enableSync(message.enabled).then(sendResponse);
     return true;
   }
   if (message.type == "embed") {

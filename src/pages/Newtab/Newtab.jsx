@@ -16,7 +16,8 @@ import { bestLists, cluster, embed, namesFor, textOf } from '../../sources/simil
 // "__sources" holds the ordered ids of sources, kept the same way, which show beside the
 // open tabs instead of among the lists, and are hidden while closed is set. Every source
 // has a source (see sources/extract.js); a list with one is a source shown as a list, and
-// can go back to being a source.
+// can go back to being a source. Other keys starting with "__" are settings, like "__sync"
+// (see Background/sync.js).
 const loadLists = async () => {
   // the picker can add the first source before there are any lists
   const anything = (stored) => stored.__tab_lists || stored.__sources;
@@ -28,7 +29,8 @@ const loadLists = async () => {
   if (!anything(stored)) {
     return null;
   }
-  const { __tab_lists: ids = [], __sources: sourceIds = [], ...lists } = stored;
+  const { __tab_lists: ids = [], __sources: sourceIds = [], ...rest } = stored;
+  const lists = Object.fromEntries(Object.entries(rest).filter(([key]) => !key.startsWith("__")));
   return { ids, sourceIds, lists };
 }
 
@@ -333,6 +335,9 @@ const Newtab = () => {
   let [opened, updateOpened] = useState({});
   // what's being sorted by topic: window ids, and source ids
   let [sorting, updateSorting] = useState([]);
+  // whether the lists sync through Chrome, and how the last sync went (see Background/sync.js)
+  let [syncing, updateSyncing] = useState(false);
+  let [syncStatus, updateSyncStatus] = useState(null);
 
   // the top layout lays tabs out in as many columns as fit, and so do lists in the grid and stack
   const [topWidth, topPanel] = useWidth();
@@ -389,9 +394,16 @@ const Newtab = () => {
       updateTabListIds(result.ids);
       updateSourceIds(result.sourceIds);
     }));
-    chrome.storage.session.get("opened").then(({ opened = {} }) => updateOpened(opened));
-    chrome.storage.onChanged.addListener((changes, area) => area == "session" && changes.opened &&
-      updateOpened(changes.opened.newValue ?? {}));
+    chrome.storage.session.get(["opened", "syncStatus"]).then(({ opened = {}, syncStatus = null }) => {
+      updateOpened(opened);
+      updateSyncStatus(syncStatus);
+    });
+    chrome.storage.local.get("__sync").then(({ __sync }) => updateSyncing(!!__sync?.enabled));
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area == "session" && changes.opened) updateOpened(changes.opened.newValue ?? {});
+      if (area == "session" && changes.syncStatus) updateSyncStatus(changes.syncStatus.newValue ?? null);
+      if (area == "local" && changes.__sync) updateSyncing(!!changes.__sync.newValue?.enabled);
+    });
     chrome.tabs.onUpdated.addListener(refresh);
     chrome.tabs.onMoved.addListener(refresh);
     chrome.tabs.onAttached.addListener(refresh);
@@ -1513,6 +1525,30 @@ const Newtab = () => {
             </Text>
           )}
           <Spacer />
+          <Menu isLazy>
+            <MenuButton
+              as={Button}
+              size="xs"
+              variant="ghost"
+              flexShrink={0}
+              color={syncStatus?.error ? "red.500" : undefined}
+              title="Keep your lists in your Chrome profile, so they're on your other computers too"
+            >
+              {!syncing ? "Sync off" : syncStatus?.error ? "Sync failed" : syncStatus ? `Synced ${ago(syncStatus.at)}` : "Syncing…"}
+            </MenuButton>
+            <MenuList fontSize="sm" maxW="320px">
+              <MenuOptionGroup type="checkbox" value={syncing ? ["on"] : []}
+                onChange={(value) => chrome.runtime.sendMessage({ type: "sync", enabled: value.includes("on") })}>
+                <MenuItemOption value="on">Sync lists through Chrome</MenuItemOption>
+              </MenuOptionGroup>
+              <Text px={3} py={1} fontSize="xs" color="gray.500">
+                Your lists, and your sources without what they found, go to any computer signed in to Chrome with
+                extension sync on, where this is switched on too. Chrome keeps 100 KB for them
+                {syncStatus?.bytes != null && `, and ${Math.round(syncStatus.bytes / 1024)} KB is in use`}.
+              </Text>
+              {syncing && syncStatus?.error && <Text px={3} py={1} fontSize="xs" color="red.500">{syncStatus.error}</Text>}
+            </MenuList>
+          </Menu>
           <ButtonGroup size="xs" variant="outline" isAttached flexShrink={0} title="Where the open tabs and sources go">
             <Button isActive={layout == "side"} onClick={() => changeLayout("side")}>Sidebar</Button>
             <Button isActive={layout == "top"} onClick={() => changeLayout("top")}>Top</Button>
