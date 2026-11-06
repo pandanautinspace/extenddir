@@ -178,6 +178,69 @@ const openedFrom = (list, listId, index, tabId) => {
   return { tabId, listId, index, ...(group != null && { group, groupInfo: list.groups?.[group] }), item };
 }
 
+// The stage's backdrop: white into pale blue, soft ribbons of blue curving across it,
+// and a fine paint speckle over the top. Drawn once; the bubbles blur it behind them.
+const ribbons = [
+  { d: "M -240 760 C 180 560, 520 900, 880 620 S 1320 160, 1720 240", w: 190, blur: 46, from: "#90cdf4", to: "#ebf8ff", o: 0.6 },
+  { d: "M -280 718 C 140 518, 480 858, 840 578 S 1280 118, 1680 198", w: 26, blur: 5, from: "#ffffff", to: "#ffffff", o: 0.75 },
+  { d: "M -120 210 C 240 70, 520 380, 830 260 S 1250 30, 1620 150", w: 120, blur: 34, from: "#bee3f8", to: "#63b3ed", o: 0.45 },
+  { d: "M -100 860 C 320 680, 700 800, 1010 540 S 1400 380, 1620 430", w: 40, blur: 8, from: "#3182ce", to: "#bee3f8", o: 0.28 },
+  { d: "M 1500 900 C 1260 760, 1180 560, 1340 360", w: 90, blur: 30, from: "#4299e1", to: "#e2e8f0", o: 0.3 },
+];
+
+const Backdrop = () => (
+  <div className="home-backdrop" aria-hidden="true">
+    <svg width="100%" height="100%" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <linearGradient id="home-wash" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="0.55" stopColor="#f3f8ff" />
+          <stop offset="1" stopColor="#dbeafe" />
+        </linearGradient>
+        <radialGradient id="home-glow" cx="0.18" cy="0.12" r="0.5">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </radialGradient>
+        {ribbons.map((r, i) => (
+          <React.Fragment key={i}>
+            <linearGradient id={`home-ribbon-${i}`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1440" y2="0">
+              <stop offset="0" stopColor={r.from} stopOpacity="0" />
+              <stop offset="0.35" stopColor={r.from} />
+              <stop offset="0.75" stopColor={r.to} />
+              <stop offset="1" stopColor={r.to} stopOpacity="0.2" />
+            </linearGradient>
+            <filter id={`home-soft-${i}`} filterUnits="userSpaceOnUse" x="-400" y="-400" width="2240" height="1700">
+              <feGaussianBlur stdDeviation={r.blur} />
+            </filter>
+          </React.Fragment>
+        ))}
+        {/* fine flecks, then a sparser scatter of bigger drops, as from a flicked brush */}
+        <filter id="home-speckle" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="1" seed="7" />
+          <feColorMatrix type="matrix" values="0 0 0 0 0.17  0 0 0 0 0.32  0 0 0 0 0.62  14 0 0 0 -9.4" />
+        </filter>
+        <filter id="home-speckle-light" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="1" seed="21" />
+          <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  14 0 0 0 -9.2" />
+        </filter>
+        <filter id="home-drops" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.22" numOctaves="2" seed="3" />
+          <feColorMatrix type="matrix" values="0 0 0 0 0.19  0 0 0 0 0.43  0 0 0 0 0.81  22 0 0 0 -15.6" />
+        </filter>
+      </defs>
+      <rect width="1440" height="900" fill="url(#home-wash)" />
+      {ribbons.map((r, i) => (
+        <path key={i} d={r.d} fill="none" stroke={`url(#home-ribbon-${i})`} strokeWidth={r.w}
+          strokeLinecap="round" opacity={r.o} filter={`url(#home-soft-${i})`} />
+      ))}
+      <rect width="1440" height="900" fill="url(#home-glow)" opacity="0.7" />
+      <rect width="1440" height="900" filter="url(#home-speckle)" opacity="0.35" />
+      <rect width="1440" height="900" filter="url(#home-speckle-light)" opacity="0.6" />
+      <rect width="1440" height="900" filter="url(#home-drops)" opacity="0.22" />
+    </svg>
+  </div>
+);
+
 const Home = ({ onSwitchView }) => {
   const { tabs, groups, self } = useBrowserTabs();
   const { ids, sourceIds, lists } = useStoredLists();
@@ -190,6 +253,13 @@ const Home = ({ onSwitchView }) => {
   const [editing, setEditing] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [tipHidden, setTipHidden] = useState(() => {
+    try { return localStorage.getItem("homeTipHidden") == "1"; } catch { return false; }
+  });
+  const hideTip = () => {
+    setTipHidden(true);
+    try { localStorage.setItem("homeTipHidden", "1"); } catch {}
+  };
   // the list whose bubble was hovered long enough to open it as a card
   const [peek, setPeek] = useState(null);
   const peekTimer = useRef(null);
@@ -449,15 +519,32 @@ const Home = ({ onSwitchView }) => {
   // --- laying out the bubbles ---
 
   const pillW = Math.min(640, w - 32);
-  const centerY = Math.max(170, Math.round(h * 0.3));
+  const bubbleIds = [...ids, ...sourceIds];
 
   // Lists sit in columns either side of the box, filling the nearest columns first and
   // taking turns left and right. The last place says how many more there are, when they
   // don't all fit.
   const colW = 112;
   const colsPerSide = Math.max(0, Math.min(3, Math.floor((w / 2 - pillW / 2 - 24) / colW)));
-  const rowYs = [-80, 30, 140];
+  // A window too narrow for any column puts the lists in up to two rows above the box
+  // instead, and the box moves down to make room for them.
+  const compact = colsPerSide == 0 && bubbleIds.length > 0;
+  const rowStep = 92;
+  const perRow = Math.max(1, Math.floor((w - 32) / rowStep));
+  const compactRows = compact ? Math.min(2, Math.ceil(bubbleIds.length / perRow)) : 0;
+  const centerY = compact
+    ? Math.max(Math.round(h * 0.3), 90 + 100 + (compactRows - 1) * 94)
+    : Math.max(170, Math.round(h * 0.3));
   const places = [];
+  if (compact) {
+    for (let r = 0; r < compactRows; r++) {
+      const inRow = Math.min(perRow, bubbleIds.length - r * perRow);
+      for (let i = 0; i < inRow; i++) {
+        places.push({ x: (i - (inRow - 1) / 2) * rowStep, y: -(100 + (compactRows - 1 - r) * 94) });
+      }
+    }
+  }
+  const rowYs = [-80, 30, 140];
   for (let col = 0; col < colsPerSide; col++) {
     for (let r = 0; r < rowYs.length; r++) {
       for (const side of [-1, 1]) {
@@ -465,12 +552,17 @@ const Home = ({ onSwitchView }) => {
       }
     }
   }
-  const bubbleIds = [...ids, ...sourceIds];
   const fits = bubbleIds.length <= places.length ? bubbleIds.length : Math.max(0, places.length - 1);
   const listBubbles = bubbleIds.slice(0, fits).map((listId, i) => {
     const count = lists[listId].tabs.length;
-    const d = Math.round(70 + Math.min(26, Math.sqrt(count) * 4));
-    return { listId, d, x: places[i].x + jitter(`${listId}x`, 10), y: places[i].y + jitter(`${listId}y`, 14) };
+    const d = compact
+      ? Math.round(78 + Math.min(6, Math.sqrt(count) * 1.5))
+      : Math.round(70 + Math.min(26, Math.sqrt(count) * 4));
+    return {
+      listId, d,
+      x: places[i].x + jitter(`${listId}x`, compact ? 4 : 10),
+      y: places[i].y + jitter(`${listId}y`, compact ? 6 : 14),
+    };
   });
   const moreLists = bubbleIds.length - fits;
 
@@ -657,6 +749,7 @@ const Home = ({ onSwitchView }) => {
           style={{ minHeight: Math.max(h, 560) }}
           onMouseDown={(e) => e.target == e.currentTarget && open && reset()}
         >
+          <Backdrop />
           <div className="home-top">
             <button className="home-link" onClick={onSwitchView} title="Use the lists page as the new tab page instead">Classic view</button>
           </div>
@@ -697,7 +790,9 @@ const Home = ({ onSwitchView }) => {
             const cardW = 320;
             const cardH = Math.min(420, h - 32);
             const bubbleLeft = w / 2 + bubble.x - bubble.d / 2;
-            const outward = bubble.x > 0 ? bubbleLeft - 12 : bubbleLeft + bubble.d + 12 - cardW;
+            // above a narrow box there's no outward, so the card centers on its bubble instead
+            const outward = compact ? bubbleLeft + bubble.d / 2 - cardW / 2
+              : bubble.x > 0 ? bubbleLeft - 12 : bubbleLeft + bubble.d + 12 - cardW;
             const left = Math.min(Math.max(16, outward), w - cardW - 16);
             const top = Math.max(16, Math.min(centerY + bubble.y - 56, h - cardH - 16));
             return (
@@ -800,9 +895,10 @@ const Home = ({ onSwitchView }) => {
                 </div>
               </div>
             )}
-            {!open && (
+            {!open && !tipHidden && (
               <div className="home-tip">
                 Click a list to look inside · drag a tab onto a list to save it · press / to search from anywhere
+                <button className="home-tip-close" title="Hide this hint" onClick={hideTip}>×</button>
               </div>
             )}
           </div>

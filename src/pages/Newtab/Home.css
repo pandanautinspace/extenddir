@@ -49,6 +49,19 @@
   background: var(--bg);
 }
 
+/* the painted wash behind the stage (Backdrop in Home.jsx); it fades out at the bottom
+   into the white lists page below */
+.home-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent);
+  mask-image: linear-gradient(to bottom, #000 82%, transparent);
+  transform: translateZ(0);
+}
+.home-backdrop svg { display: block; }
+
 .home-top {
   position: absolute;
   top: 12px;
@@ -89,7 +102,10 @@
   gap: 8px;
   height: 56px;
   padding: 0 8px 0 20px;
-  background: var(--fill);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--frost);
+  backdrop-filter: var(--frost);
+  box-shadow: var(--bubble-rim), var(--bubble-drop);
   border: 2px solid transparent;
   border-radius: 28px;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
@@ -161,6 +177,22 @@
   font-size: var(--chakra-fontSizes-xs);
   color: var(--muted);
 }
+.home-tip-close {
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-size: 1.2em;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.home-tip:hover .home-tip-close,
+.home-tip-close:focus-visible { opacity: 1; }
+.home-tip-close:hover { background: var(--hover); color: var(--ink); }
 
 /* --- the results --- */
 
@@ -390,19 +422,40 @@
   50% { translate: 0 -5px; }
 }
 
+/* depth shared by the bubbles: light from the top left, a soft shadow beneath */
+.home {
+  --bubble-gloss: radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.35) 38%, rgba(255, 255, 255, 0) 62%),
+    linear-gradient(to bottom, rgba(26, 32, 44, 0) 55%, rgba(26, 32, 44, 0.05));
+  --bubble-rim: inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -5px 10px rgba(26, 32, 44, 0.07);
+  --bubble-drop: 0 8px 16px -6px rgba(26, 32, 44, 0.22), 0 2px 4px rgba(26, 32, 44, 0.06);
+  --bubble-drop-up: 0 14px 24px -8px rgba(26, 32, 44, 0.26), 0 3px 6px rgba(26, 32, 44, 0.08);
+  --glass: rgba(255, 255, 255, 0.42);
+  --glass-hover: rgba(255, 255, 255, 0.62);
+  --glass-strong: rgba(255, 255, 255, 0.7);
+  --glass-edge: rgba(255, 255, 255, 0.75);
+  --frost: blur(14px) saturate(1.5);
+  --pill-gloss: linear-gradient(to bottom, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 60%),
+    linear-gradient(to bottom, rgba(26, 32, 44, 0) 50%, rgba(26, 32, 44, 0.04));
+}
+
 /* gray.100 like a list card; a source is white and outlined like a source card */
 .home-listbubble {
   position: absolute;
   z-index: 10;
-  background: var(--fill);
-  border: 1px solid transparent;
+  background-color: var(--glass);
+  background-image: var(--bubble-gloss);
+  -webkit-backdrop-filter: var(--frost);
+  backdrop-filter: var(--frost);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--bubble-rim), var(--bubble-drop);
   animation: home-float 7s ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
-  transition: opacity 0.2s, box-shadow 0.15s, scale 0.15s, background 0.15s;
+  transition: opacity 0.2s, box-shadow 0.15s, scale 0.15s, background-color 0.15s;
 }
-.home-listbubble:hover { background: var(--pressed); box-shadow: var(--shadow-sm); scale: 1.06; }
-.home-listbubble.is-source { background: var(--surface); border-color: var(--line); }
-.home-listbubble.is-source:hover { background: var(--hover); }
+.home-listbubble:hover { background-color: var(--glass-hover); box-shadow: var(--bubble-rim), var(--bubble-drop-up); scale: 1.06; }
+/* a source is the frostier of the two, with a gray edge, as its card is white and outlined */
+.home-listbubble.is-source { background-color: var(--glass-strong); border-color: var(--line); }
+.home-listbubble.is-source:hover { background-color: rgba(255, 255, 255, 0.85); }
 .home-listbubble.is-quiet { opacity: 0.45; }
 .home-listbubble.is-drop { scale: 1.12; outline-offset: 4px; }
 .home-listbubble.is-more {
@@ -410,8 +463,10 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  border: 1px dashed var(--chakra-colors-gray-300);
-  background: var(--surface);
+  border: 1px dashed var(--chakra-colors-gray-400);
+  background: var(--glass);
+  outline: none;
+  box-shadow: none;
   color: var(--muted) !important;
   font-size: var(--chakra-fontSizes-xs);
   font-weight: 600;
@@ -502,19 +557,27 @@
   position: relative;
   max-width: 220px;
   height: 36px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--glass);
+  background-image: var(--pill-gloss);
+  -webkit-backdrop-filter: var(--frost);
+  backdrop-filter: var(--frost);
+  outline: 1px solid var(--glass-edge);
+  outline-offset: -1px;
+  box-shadow: var(--bubble-rim), var(--bubble-drop);
   animation: home-float 8s ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
   transition: box-shadow 0.15s, scale 0.15s;
 }
-.home-tabbubble:hover { box-shadow: var(--shadow); scale: 1.04; z-index: 2; }
-.home-tabbubble.is-grouped { box-shadow: inset 0 0 0 2px var(--group), var(--shadow-sm); }
+.home-tabbubble:hover { background-color: var(--glass-hover); box-shadow: var(--bubble-rim), var(--bubble-drop-up); scale: 1.04; z-index: 2; }
+.home-tabbubble.is-grouped { box-shadow: inset 0 0 0 2px var(--group), var(--bubble-rim), var(--bubble-drop); }
+.home-tabbubble.is-grouped:hover { box-shadow: inset 0 0 0 2px var(--group), var(--bubble-rim), var(--bubble-drop-up); }
 .home-tabbubble.is-elsewhere { opacity: 0.75; }
 .home-tabbubble.is-more {
   padding: 0 14px;
   border-radius: var(--chakra-radii-full);
-  border: 1px dashed var(--chakra-colors-gray-300);
+  border: 1px dashed var(--chakra-colors-gray-400);
+  background: var(--glass);
+  outline: none;
   box-shadow: none;
   font-size: var(--chakra-fontSizes-xs);
   font-weight: 600;
@@ -589,6 +652,8 @@
 
 .home-classic {
   height: 100vh;
+  /* the lists page's toolbar doesn't wrap; on a narrow window it scrolls here, not the page */
+  overflow-x: auto;
   border-top: 1px solid var(--line);
   background: var(--bg);
 }
